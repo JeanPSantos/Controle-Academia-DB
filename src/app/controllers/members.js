@@ -5,13 +5,34 @@ const { age, date } = require('../../lib/utils');
 
 module.exports = {
 	index(req, res) {
-		Member.all(function(members) {
-			return res.render('members/index', { members });
-		});
+		let { filter, page, limit } = req.query;
+
+		page = page || 1;
+		limit = limit || 2;
+		let offset = limit * (page - 1);
+
+		const params = {
+			filter,
+			page,
+			limit,
+			offset,
+			callback(members) {
+
+				const pagination = {
+					total: Math.ceil(members[0].total / limit),
+					page
+				};
+				return res.render('members/index', { members, pagination, filter });
+			}
+		};
+
+		Member.paginate(params);
 	},
 
 	create(req, res) {
-		return res.render('members/create');
+		Member.instructorSelectOptions(function(options) {
+			return res.render('members/create', { instructorOptions: options });
+		});
 	},
 
 	post(req, res) {
@@ -45,7 +66,9 @@ module.exports = {
 
 			member.birth = date(member.birth).iso;
 
-			return res.render('members/edit', { member });
+			Member.instructorSelectOptions(function(options) {
+				return res.render('members/edit', { member, instructorOptions: options });
+			});
 		});
 	},
 
